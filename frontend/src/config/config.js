@@ -1,9 +1,9 @@
 const environments = {
   development: {
-    API_BASE_URL: 'http://localhost:8080/api/v1',
+    API_BASE_URL: "http://10.0.2.20:8080/api/v1",
   },
   production: {
-    API_BASE_URL: 'https://api.yourproduction.com/api/v1',
+    API_BASE_URL: "https://10.0.2.20:8080/api/v1",
   },
 };
 

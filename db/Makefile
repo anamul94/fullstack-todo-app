@@ -1,6 +1,6 @@
 # Image name and tag
 IMAGE_NAME := tododb
-IMAGE_TAG := v01
+IMAGE_TAG := v1.0
 CONTAINER_NAME := tododb
 
 # Docker registry (optional)
@@ -21,7 +21,7 @@ pull:
 
 # Run a container from the Docker image
 run:
-	docker run -d --name $(CONTAINER_NAME) -p 5434:5432 $(IMAGE_NAME):$(IMAGE_TAG)
+	docker run -d --name $(CONTAINER_NAME) -p 5432:5432 $(IMAGE_NAME):$(IMAGE_TAG)
 
 # Stop the container
 stop:

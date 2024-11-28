@@ -1,5 +1,5 @@
 IMAGE_NAME=todobackend
-IMAGE_TAG=v01
+IMAGE_TAG=v1.0
 CONTAINER_NAME=todobackend
 REGISTRY=suanam/todobackend
 

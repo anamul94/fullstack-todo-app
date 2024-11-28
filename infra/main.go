@@ -277,10 +277,10 @@ func main() {
         systemctl start docker
 
         # Pull the frontend Docker image
-        docker pull your-registry/frontend-image:latest
+        docker pull suanam/todoapp:v1.0
 
         # Run the frontend container
-        docker run -d --name frontend -p 80:80 your-registry/frontend-image:latest
+        docker run -d --name frontend -p 80:80 suanam/todoapp:v1.0
         `
 
         // User data script to install Docker and run backend container
@@ -291,10 +291,10 @@ func main() {
         systemctl start docker
 
         # Pull the backend Docker image
-        docker pull suanam/tododb:v01
+        docker pull suanam/todobackend:v1.0
 
         # Run the backend container
-        docker run -d --name backend -p 8080:8080 suanam/tododb:v01
+        docker run -d --name backend -p 8080:8080 suanam/todobackend:v1.0
         `
 
         // User data script to install and configure the backend load balancer using Nginx
@@ -334,22 +334,42 @@ func main() {
         systemctl start docker
 
         # Pull the database Docker image
-        docker pull your-registry/db-image:latest
+        docker pull suanam/tododb:v1.0
 
         # Run the database container
-        docker run -d --name db -p 5432:5432 -e POSTGRES_PASSWORD=your-password your-registry/db-image:latest
+        docker run -d --name db -p 5432:5432  suanam/tododb:v1.0
         `
+
+        // Create Frontend Instance
+        _, err = ec2.NewInstance(ctx, "frontend", &ec2.InstanceArgs{
+            Ami:          pulumi.String("ami-053b0d53c279acc90"), // Ubuntu 22.04 LTS AMI ID
+            InstanceType: pulumi.String("t2.micro"),
+            SubnetId:     frontendSubnet.ID(),
+            VpcSecurityGroupIds: pulumi.StringArray{frontendSg.ID()},
+            UserData:     pulumi.String(frontendUserData),
+            PrivateIp:    pulumi.String("10.0.1.10"), // Assign a fixed private IP address
+            KeyName:      pulumi.String("your-key-pair-name"), // Specify the name of your existing key pair
+            Tags: pulumi.StringMap{
+                "Name": pulumi.String("frontend"),
+            },
+        })
+        if err != nil {
+            return err
+        }
 
         // Create Backend Instances
         backendInstances := make([]*ec2.Instance, 2)
         for i := 0; i < 2; i++ {
             instanceName := fmt.Sprintf("backend-app-%d", i+1)
+            privateIp := fmt.Sprintf("10.0.2.%d", i+10) // Assign fixed private IP addresses
             instance, err := ec2.NewInstance(ctx, instanceName, &ec2.InstanceArgs{
                 Ami:          pulumi.String("ami-053b0d53c279acc90"), // Ubuntu 22.04 LTS AMI ID
                 InstanceType: pulumi.String("t2.micro"),
                 SubnetId:     backendSubnet.ID(),
                 VpcSecurityGroupIds: pulumi.StringArray{backendSg.ID()},
-                UserData:     pulumi.String(backendUserData), // Add backend user data script
+                UserData:     pulumi.String(backendUserData),
+                PrivateIp:    pulumi.String(privateIp),
+                KeyName:      pulumi.String("your-key-pair-name"), // Specify the name of your existing key pair
                 Tags: pulumi.StringMap{
                     "Name": pulumi.String(instanceName),
                 },
@@ -367,6 +387,8 @@ func main() {
             SubnetId:     backendSubnet.ID(),
             VpcSecurityGroupIds: pulumi.StringArray{backendSg.ID()},
             UserData:     pulumi.String(backendLbUserData), // Add backend load balancer user data script
+            PrivateIp:    pulumi.String("10.0.2.20"), // Assign a fixed private IP address
+            KeyName:      pulumi.String("your-key-pair-name"), // Specify the name of your existing key pair
             Tags: pulumi.StringMap{
                 "Name": pulumi.String("backend-lb"),
             },
@@ -374,27 +396,16 @@ func main() {
         if err != nil {
             return err
         }
-        // Create Frontend Instance
-        _, err = ec2.NewInstance(ctx, "frontend", &ec2.InstanceArgs{
-            Ami:          pulumi.String("ami-053b0d53c279acc90"), // Ubuntu 22.04 LTS AMI ID
-            InstanceType: pulumi.String("t2.micro"),
-            SubnetId:     frontendSubnet.ID(),
-            VpcSecurityGroupIds: pulumi.StringArray{frontendSg.ID()},
-            UserData:     pulumi.String(frontendUserData), // Add frontend user data script
-            Tags: pulumi.StringMap{
-                "Name": pulumi.String("frontend"),
-            },
-        })
-        if err != nil {
-            return err
-        }
+
         // Create DB Instance
         _, err = ec2.NewInstance(ctx, "db", &ec2.InstanceArgs{
             Ami:          pulumi.String("ami-053b0d53c279acc90"), // Ubuntu 22.04 LTS AMI ID
             InstanceType: pulumi.String("t2.micro"),
             SubnetId:     dbSubnet.ID(),
             VpcSecurityGroupIds: pulumi.StringArray{dbSg.ID()},
-            UserData:     pulumi.String(dbUserData), // Add DB user data script
+            UserData:     pulumi.String(dbUserData),
+            PrivateIp:    pulumi.String("10.0.3.10"), // Assign a fixed private IP address
+            KeyName:      pulumi.String("your-key-pair-name"), // Specify the name of your existing key pair
             Tags: pulumi.StringMap{
                 "Name": pulumi.String("db"),
             },
