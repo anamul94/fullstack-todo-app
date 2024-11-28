@@ -2,10 +2,8 @@ package main
 
 import (
     "fmt"
-    "github.com/pulumi/pulumi-aws/sdk/v5/go/aws"
-    "github.com/pulumi/pulumi-aws/sdk/v5/go/aws/ec2"
-    "github.com/pulumi/pulumi-aws/sdk/v5/go/aws/lb"
-    "github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+    "github.com/pulumi/pulumi-aws/sdk/v6/go/aws/ec2"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
@@ -38,7 +36,7 @@ func main() {
         frontendSubnet, err := ec2.NewSubnet(ctx, "frontend-subnet", &ec2.SubnetArgs{
             VpcId:               vpc.ID(),
             CidrBlock:           pulumi.String("10.0.1.0/24"),
-            AvailabilityZone:    pulumi.String("us-east-1a"),
+            AvailabilityZone:    pulumi.String("ap-southeast-1a"),
             MapPublicIpOnLaunch: pulumi.Bool(true), // Auto-assign public IP
             Tags: pulumi.StringMap{
                 "Name": pulumi.String("frontend-subnet-public"),
@@ -52,7 +50,7 @@ func main() {
         backendSubnet, err := ec2.NewSubnet(ctx, "backend-subnet", &ec2.SubnetArgs{
             VpcId:            vpc.ID(),
             CidrBlock:        pulumi.String("10.0.2.0/24"),
-            AvailabilityZone: pulumi.String("us-east-1b"),
+            AvailabilityZone: pulumi.String("ap-southeast-1b"),
             Tags: pulumi.StringMap{
                 "Name": pulumi.String("backend-subnet-private"),
             },
@@ -64,7 +62,7 @@ func main() {
         dbSubnet, err := ec2.NewSubnet(ctx, "db-subnet", &ec2.SubnetArgs{
             VpcId:            vpc.ID(),
             CidrBlock:        pulumi.String("10.0.3.0/24"),
-            AvailabilityZone: pulumi.String("us-east-1c"),
+            AvailabilityZone: pulumi.String("ap-southeast-1c"),
             Tags: pulumi.StringMap{
                 "Name": pulumi.String("db-subnet-private"),
             },
@@ -191,6 +189,12 @@ func main() {
                     FromPort:  pulumi.Int(22),
                     ToPort:    pulumi.Int(22),
                     CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")}, // Allow SSH from anywhere
+                },
+                &ec2.SecurityGroupIngressArgs{
+                    Protocol:   pulumi.String("tcp"), 
+                    FromPort:  pulumi.Int(80),
+                    ToPort:    pulumi.Int(80),
+                    CidrBlocks: pulumi.StringArray{pulumi.String("0.0.0.0/0")},
                 },
             },
             Egress: ec2.SecurityGroupEgressArray{
@@ -342,13 +346,13 @@ func main() {
 
         // Create Frontend Instance
         _, err = ec2.NewInstance(ctx, "frontend", &ec2.InstanceArgs{
-            Ami:          pulumi.String("ami-053b0d53c279acc90"), // Ubuntu 22.04 LTS AMI ID
+            Ami:          pulumi.String("ami-047126e50991d067b"), // Updated AMI ID
             InstanceType: pulumi.String("t2.micro"),
             SubnetId:     frontendSubnet.ID(),
             VpcSecurityGroupIds: pulumi.StringArray{frontendSg.ID()},
             UserData:     pulumi.String(frontendUserData),
-            PrivateIp:    pulumi.String("10.0.1.10"), // Assign a fixed private IP address
-            KeyName:      pulumi.String("your-key-pair-name"), // Specify the name of your existing key pair
+            PrivateIp:    pulumi.String("10.0.1.10"),
+            KeyName:      pulumi.String("my-key-pair"),
             Tags: pulumi.StringMap{
                 "Name": pulumi.String("frontend"),
             },
@@ -361,15 +365,15 @@ func main() {
         backendInstances := make([]*ec2.Instance, 2)
         for i := 0; i < 2; i++ {
             instanceName := fmt.Sprintf("backend-app-%d", i+1)
-            privateIp := fmt.Sprintf("10.0.2.%d", i+10) // Assign fixed private IP addresses
+            privateIp := fmt.Sprintf("10.0.2.%d", i+10)
             instance, err := ec2.NewInstance(ctx, instanceName, &ec2.InstanceArgs{
-                Ami:          pulumi.String("ami-053b0d53c279acc90"), // Ubuntu 22.04 LTS AMI ID
+                Ami:          pulumi.String("ami-047126e50991d067b"), // Updated AMI ID
                 InstanceType: pulumi.String("t2.micro"),
                 SubnetId:     backendSubnet.ID(),
                 VpcSecurityGroupIds: pulumi.StringArray{backendSg.ID()},
                 UserData:     pulumi.String(backendUserData),
                 PrivateIp:    pulumi.String(privateIp),
-                KeyName:      pulumi.String("your-key-pair-name"), // Specify the name of your existing key pair
+                KeyName:      pulumi.String("my-key-pair"),
                 Tags: pulumi.StringMap{
                     "Name": pulumi.String(instanceName),
                 },
@@ -382,13 +386,13 @@ func main() {
 
         // Create Backend Load Balancer Instance
         _, err = ec2.NewInstance(ctx, "backend-lb", &ec2.InstanceArgs{
-            Ami:          pulumi.String("ami-053b0d53c279acc90"), // Ubuntu 22.04 LTS AMI ID
+            Ami:          pulumi.String("ami-047126e50991d067b"), // Updated AMI ID
             InstanceType: pulumi.String("t2.micro"),
             SubnetId:     backendSubnet.ID(),
             VpcSecurityGroupIds: pulumi.StringArray{backendSg.ID()},
-            UserData:     pulumi.String(backendLbUserData), // Add backend load balancer user data script
-            PrivateIp:    pulumi.String("10.0.2.20"), // Assign a fixed private IP address
-            KeyName:      pulumi.String("your-key-pair-name"), // Specify the name of your existing key pair
+            UserData:     pulumi.String(backendLbUserData),
+            PrivateIp:    pulumi.String("10.0.2.20"),
+            KeyName:      pulumi.String("my-key-pair"),
             Tags: pulumi.StringMap{
                 "Name": pulumi.String("backend-lb"),
             },
@@ -399,13 +403,13 @@ func main() {
 
         // Create DB Instance
         _, err = ec2.NewInstance(ctx, "db", &ec2.InstanceArgs{
-            Ami:          pulumi.String("ami-053b0d53c279acc90"), // Ubuntu 22.04 LTS AMI ID
+            Ami:          pulumi.String("ami-047126e50991d067b"),
             InstanceType: pulumi.String("t2.micro"),
             SubnetId:     dbSubnet.ID(),
             VpcSecurityGroupIds: pulumi.StringArray{dbSg.ID()},
             UserData:     pulumi.String(dbUserData),
-            PrivateIp:    pulumi.String("10.0.3.10"), // Assign a fixed private IP address
-            KeyName:      pulumi.String("your-key-pair-name"), // Specify the name of your existing key pair
+            PrivateIp:    pulumi.String("10.0.3.10"),
+            KeyName:      pulumi.String("my-key-pair"),
             Tags: pulumi.StringMap{
                 "Name": pulumi.String("db"),
             },
@@ -420,7 +424,13 @@ func main() {
         ctx.Export("backendSubnetId", backendSubnet.ID())
         ctx.Export("dbSubnetId", dbSubnet.ID())
         ctx.Export("natGatewayIp", eip.PublicIp)
-        ctx.Export("backendInstanceIds", pulumi.StringArray(backendInstances))
+
+        // Convert backendInstances to a slice of instance IDs
+        backendInstanceIds := make([]pulumi.StringOutput, len(backendInstances))
+        for i, instance := range backendInstances {
+            backendInstanceIds[i] = instance.ID().ToStringOutput()
+        }
+        ctx.Export("backendInstanceIds", pulumi.ToStringArrayOutput(backendInstanceIds))
 
         return nil
     })
