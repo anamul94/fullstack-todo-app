@@ -1,0 +1,94 @@
+.todo-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 20px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  border-radius: 5px;
+}
+
+.todo-form {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.todo-form input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.todo-form button {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: auto;
+}
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  gap: 10px;
+}
+
+.todo-item input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+
+.todo-item .completed {
+  text-decoration: line-through;
+  color: #888;
+}
+
+.error-message {
+  color: red;
+  margin-bottom: 10px;
+}
+
+.todo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.logout-btn {
+  padding: 8px 16px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  width: auto;
+}
+
+.logout-btn:hover {
+  background-color: #c82333;
+}
+
+.todo-item span {
+  flex: 1;
+  margin-right: 10px;
+}
+
+.delete-btn {
+  padding: 4px 8px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8em;
+  max-width: 100px;
+}
+
+.delete-btn:hover {
+  background-color: #c82333;
+}

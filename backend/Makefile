@@ -1,7 +1,7 @@
 IMAGE_NAME=todobackend
 IMAGE_TAG=v01
 CONTAINER_NAME=todobackend
-
+REGISTRY=suanam/todobackend
 
 
 build:
@@ -19,3 +19,10 @@ clean:
 
 logs:
 	docker logs -f $(CONTAINER_NAME)
+
+push:
+	docker tag $(IMAGE_NAME):$(IMAGE_TAG) $(REGISTRY):$(IMAGE_TAG)
+	docker push $(REGISTRY):$(IMAGE_TAG)
+
+pull:
+	docker pull $(REGISTRY):$(IMAGE_TAG)

@@ -34,7 +34,7 @@ export class UsersService {
     return savedUser;
   }
 
-  async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
+  async updateUser(id: number, dto: UpdateUserDto): Promise<User> {
     const user = await this.userRepository.findOneBy({ id: id });
     if (!user) {
       throw new BadRequestException('User not found.');
@@ -52,7 +52,7 @@ export class UsersService {
     const response: User[] = [];
     
     for (const userId of dto.userIds) {
-      const user = await this.userRepository.findOneBy({ id: userId });
+      const user = await this.userRepository.findOneBy({ id: Number(userId) });
       if (!user) {
         console.error(`User with ID ${userId} not found`);
         continue;

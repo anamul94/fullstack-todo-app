@@ -6,7 +6,6 @@ import { GoogleStrategy, LocalStrategy } from './stragegies';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './stragegies/jwt.strategy';
 import { AuthController } from './auth.controller';
-import { MailSender } from 'src/util/mailsend';
 
 @Module({
   imports: [
@@ -22,7 +21,6 @@ import { MailSender } from 'src/util/mailsend';
     LocalStrategy,
     JwtStrategy,
     GoogleStrategy,
-    MailSender,
   ],
   exports: [AuthService],
   controllers: [AuthController],

@@ -1,6 +1,6 @@
 module todo-infra
 
-go 1.20
+go 1.23
 
 require (
 	github.com/pulumi/pulumi-aws/sdk/v5 v5.0.0

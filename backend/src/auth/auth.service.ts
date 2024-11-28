@@ -11,7 +11,6 @@ import * as argon from 'argon2';
 import { User } from 'src/user/entities/user.entity';
 import { SignupDto } from './dto/signup.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { MailSender } from 'src/util/mailsend';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 
 @Injectable()
@@ -22,7 +21,6 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private mailSender: MailSender,
   ) {
     let OTP: Record<number, string> = {};
   }
@@ -90,7 +88,7 @@ export class AuthService {
     }
   }
 
-  async genForgotPasswordOtp(email: string): Promise<void> {
+  async genForgotPasswordOtp(email: string): Promise<string> {
     const user = await this.usersService.findUserByEmail(email);
     if (!user) {
       throw new BadRequestException('User not found.');
@@ -101,12 +99,7 @@ export class AuthService {
 
     this.OTP[email] = { code: otpCode, expiry: otpExpiry };
 
-    this.mailSender.mailSend(
-      email,
-      user.firstName,
-      'Forgot Password',
-      `Your OTP is ${otpCode} expiresIn ${otpExpiry}`,
-    );
+    return otpCode;
   }
 
   async validateOTP(email: string, otp: string): Promise<boolean> {

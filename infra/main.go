@@ -291,10 +291,10 @@ func main() {
         systemctl start docker
 
         # Pull the backend Docker image
-        docker pull your-registry/backend-image:latest
+        docker pull suanam/tododb:v01
 
         # Run the backend container
-        docker run -d --name backend -p 8080:8080 your-registry/backend-image:latest
+        docker run -d --name backend -p 8080:8080 suanam/tododb:v01
         `
 
         // User data script to install and configure the backend load balancer using Nginx
