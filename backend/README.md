@@ -5,7 +5,7 @@
 [circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
 [circleci-url]: https://circleci.com/gh/nestjs/nest
 
-# <p align="center">NestJs starter template with Postgres DB</p>
+# <p align="center">Todo App Backend</p>
 
 </p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
@@ -13,12 +13,12 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Todo App Backend
 
 ## Feature
 
 <ul style="list-style-type:disc">
-<li>User SignUp(Role:Optional) </li>
+<li>User SignUp </li>
 <li>User SignIn</li>
 <li>User Update</li>
 <li>JWT</li>
@@ -26,7 +26,6 @@
 <li>Google OAuth</li>
 <li>Reset Password</li>
 <li>Forgot Password</li>
-<li>Mailsend(https://www.mailersend.com/)</li>
 <li>Swagger </li>
 
 </ul>

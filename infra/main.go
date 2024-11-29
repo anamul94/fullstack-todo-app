@@ -275,43 +275,70 @@ func main() {
 
         // User data script to install Docker and run frontend container
         frontendUserData := `#!/bin/bash
-        apt-get update
-        apt-get install -y docker.io
-        systemctl enable docker
-        systemctl start docker
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+        sudo systemctl enable docker
+        sudo systemctl start docker
 
         # Pull the frontend Docker image
-        docker pull suanam/todoapp:v1.0
+        sudo docker pull suanam/todoapp:v1.0
 
         # Run the frontend container
-        docker run -d --name frontend -p 80:80 suanam/todoapp:v1.0
+        sudo docker run -d --name frontend -p 80:80 suanam/todoapp:v1.0
         `
 
         // User data script to install Docker and run backend container
         backendUserData := `#!/bin/bash
-        apt-get update
-        apt-get install -y docker.io
-        systemctl enable docker
-        systemctl start docker
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+        sudo systemctl enable docker
+        sudo systemctl start docker
 
         # Pull the backend Docker image
-        docker pull suanam/todobackend:v1.0
+        sudo docker pull suanam/todobackend:v1.0
 
         # Run the backend container
-        docker run -d --name backend -p 8080:8080 suanam/todobackend:v1.0
+        sudo docker run -d --name backend -p 8080:8080 suanam/todobackend:v1.0
         `
 
+        // Create Backend Instances
+        backendInstances := []*ec2.Instance{}
+        backendInstanceIPs := []string{
+            "10.0.2.10",
+            "10.0.2.11",
+        }
+
+        for i := 0; i < 2; i++ {
+            instanceName := fmt.Sprintf("backend-app-%d", i+1)
+            instance, err := ec2.NewInstance(ctx, instanceName, &ec2.InstanceArgs{
+                Ami:          pulumi.String("ami-047126e50991d067b"), // Updated AMI ID
+                InstanceType: pulumi.String("t2.micro"),
+                SubnetId:     backendSubnet.ID(),
+                VpcSecurityGroupIds: pulumi.StringArray{backendSg.ID()},
+                UserData:     pulumi.String(backendUserData),
+                PrivateIp:    pulumi.String(backendInstanceIPs[i]),
+                KeyName:      pulumi.String("my-key-pair"),
+                Tags: pulumi.StringMap{
+                    "Name": pulumi.String(instanceName),
+                },
+            })
+            if err != nil {
+                return err
+            }
+            backendInstances = append(backendInstances, instance)
+        }
+
         // User data script to install and configure the backend load balancer using Nginx
-        backendLbUserData := `#!/bin/bash
-        apt-get update
-        apt-get install -y nginx
+        backendLbUserData := fmt.Sprintf(`#!/bin/bash
+        sudo apt-get update
+        sudo apt-get install -y nginx
 
         # Configure Nginx
-        cat > /etc/nginx/nginx.conf <<EOF
+        sudo bash -c 'cat > /etc/nginx/nginx.conf <<EOF
         http {
             upstream backend {
-                server {{ backendInstances[0].PrivateIp }}:8080;
-                server {{ backendInstances[1].PrivateIp }}:8080;
+                server %s:8080;
+                server %s:8080;
             }
 
             server {
@@ -323,30 +350,53 @@ func main() {
         }
 
         events {}
-        EOF
+        EOF'
 
         # Start Nginx
-        systemctl start nginx
-        systemctl enable nginx
-        `
+        sudo systemctl start nginx
+        sudo systemctl enable nginx
+        `, backendInstanceIPs[0], backendInstanceIPs[1])
 
-        // User data script to install Docker and run the database container
-        dbUserData := `#!/bin/bash
-        apt-get update
-        apt-get install -y docker.io
-        systemctl enable docker
-        systemctl start docker
+        // Allocate an Elastic IP for the backend load balancer
+        backendLbEip, err := ec2.NewEip(ctx, "backend-lb-eip", &ec2.EipArgs{
+            Vpc: pulumi.Bool(true),
+            Tags: pulumi.StringMap{
+                "Name": pulumi.String("backend-lb-eip"),
+            },
+        })
+        if err != nil {
+            return err
+        }
 
-        # Pull the database Docker image
-        docker pull suanam/tododb:v1.0
+        // Create Backend Load Balancer Instance
+        backendLb, err := ec2.NewInstance(ctx, "backend-lb", &ec2.InstanceArgs{
+            Ami:          pulumi.String("ami-047126e50991d067b"), // Updated AMI ID
+            InstanceType: pulumi.String("t2.micro"),
+            SubnetId:     frontendSubnet.ID(), // Public subnet
+            VpcSecurityGroupIds: pulumi.StringArray{backendSg.ID()},
+            UserData:     pulumi.String(backendLbUserData),
+            PrivateIp:    pulumi.String("10.0.1.20"), // Update IP to match public subnet range
+            KeyName:      pulumi.String("my-key-pair"),
+            Tags: pulumi.StringMap{
+                "Name": pulumi.String("backend-lb"),
+            },
+        })
+        if err != nil {
+            return err
+        }
 
-        # Run the database container
-        docker run -d --name db -p 5432:5432  suanam/tododb:v1.0
-        `
+        // Associate the Elastic IP with the backend load balancer
+        _, err = ec2.NewEipAssociation(ctx, "backend-lb-eip-assoc", &ec2.EipAssociationArgs{
+            InstanceId: backendLb.ID(),
+            AllocationId: backendLbEip.ID(),
+        })
+        if err != nil {
+            return err
+        }
 
         // Create Frontend Instance
         _, err = ec2.NewInstance(ctx, "frontend", &ec2.InstanceArgs{
-            Ami:          pulumi.String("ami-047126e50991d067b"), // Updated AMI ID
+            Ami:          pulumi.String("ami-047126e50991d067b"),
             InstanceType: pulumi.String("t2.micro"),
             SubnetId:     frontendSubnet.ID(),
             VpcSecurityGroupIds: pulumi.StringArray{frontendSg.ID()},
@@ -361,45 +411,19 @@ func main() {
             return err
         }
 
-        // Create Backend Instances
-        backendInstances := make([]*ec2.Instance, 2)
-        for i := 0; i < 2; i++ {
-            instanceName := fmt.Sprintf("backend-app-%d", i+1)
-            privateIp := fmt.Sprintf("10.0.2.%d", i+10)
-            instance, err := ec2.NewInstance(ctx, instanceName, &ec2.InstanceArgs{
-                Ami:          pulumi.String("ami-047126e50991d067b"), // Updated AMI ID
-                InstanceType: pulumi.String("t2.micro"),
-                SubnetId:     backendSubnet.ID(),
-                VpcSecurityGroupIds: pulumi.StringArray{backendSg.ID()},
-                UserData:     pulumi.String(backendUserData),
-                PrivateIp:    pulumi.String(privateIp),
-                KeyName:      pulumi.String("my-key-pair"),
-                Tags: pulumi.StringMap{
-                    "Name": pulumi.String(instanceName),
-                },
-            })
-            if err != nil {
-                return err
-            }
-            backendInstances[i] = instance
-        }
+        // Add DB user data script before creating DB instance
+        dbUserData := `#!/bin/bash
+        sudo apt-get update
+        sudo apt-get install -y docker.io
+        sudo systemctl enable docker
+        sudo systemctl start docker
 
-        // Create Backend Load Balancer Instance
-        _, err = ec2.NewInstance(ctx, "backend-lb", &ec2.InstanceArgs{
-            Ami:          pulumi.String("ami-047126e50991d067b"), // Updated AMI ID
-            InstanceType: pulumi.String("t2.micro"),
-            SubnetId:     backendSubnet.ID(),
-            VpcSecurityGroupIds: pulumi.StringArray{backendSg.ID()},
-            UserData:     pulumi.String(backendLbUserData),
-            PrivateIp:    pulumi.String("10.0.2.20"),
-            KeyName:      pulumi.String("my-key-pair"),
-            Tags: pulumi.StringMap{
-                "Name": pulumi.String("backend-lb"),
-            },
-        })
-        if err != nil {
-            return err
-        }
+        # Pull the database Docker image
+        sudo docker pull suanam/tododb:v1.0
+
+        # Run the database container
+        sudo docker run -d --name db -p 5432:5432 suanam/tododb:v1.0
+        `
 
         // Create DB Instance
         _, err = ec2.NewInstance(ctx, "db", &ec2.InstanceArgs{
